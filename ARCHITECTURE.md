@@ -12,6 +12,12 @@ The project is intentionally dependency-free so it can be hosted from GitHub Pag
 pbs-to-slurm-converter/
 ├── README.md
 ├── ARCHITECTURE.md
+├── package.json
+├── .github/
+│   └── workflows/
+│       └── static.yml
+├── tests/
+│   └── converter.test.js
 └── public/
     ├── index.html
     └── assets/
@@ -38,7 +44,7 @@ Slurm output + summary + warnings
 DOM update in main.js
 ```
 
-No backend, database, API, build process, package manager, or server-side processing is required.
+The browser-side application requires no backend, database, API, or build process. A minimal `package.json` is included only for development tooling (unit testing via Node.js).
 
 ## File Responsibilities
 
@@ -238,10 +244,40 @@ Current required IDs:
 | `outputLineCount` | Slurm output line count. |
 | `currentYear` | Dynamic footer year. |
 
-## Testing Checklist
+## Unit Testing
+
+### Running Tests
+
+Unit tests are located in `tests/converter.test.js` and test pure converter functions in isolation.
+
+```bash
+npm test
+```
+
+Tests use Node.js built-in `assert` module with no external dependencies. The test file recreates the core conversion functions (`normaliseWalltime`, `parseNodeRequest`, `parseSelectRequest`, `mapMailType`, `convertDependency`) in a testable Node.js environment.
+
+Current test coverage includes:
+- Walltime normalization (HH:MM:SS → Slurm format with days)
+- Node and PPN request parsing
+- PBS Pro `select=` statement parsing
+- Mail type mapping (PBS → Slurm)
+- Job dependency conversion
+
+### CI/CD Integration
+
+The `.github/workflows/static.yml` workflow runs tests **before** GitHub Pages deployment:
+
+1. **Test job** runs `npm test` on push to `main`
+2. **Deploy job** depends on test job succeeding
+3. **Deployment is blocked** if any test fails
+
+This ensures broken conversions are never deployed to production.
+
+## Manual Testing Checklist
 
 Before committing changes:
 
+- Run `npm test` and confirm all tests pass.
 - Open `public/index.html` in a browser.
 - Confirm the page loads with styling applied.
 - Confirm textareas are empty by default.

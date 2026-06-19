@@ -1,0 +1,17 @@
+{
+  "name": "pbs-to-slurm-converter",
+  "version": "1.0.0",
+  "description": "Browser-based utility for converting PBS/Torque job scripts to Slurm",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/converter.test.js"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "pbs",
+    "slurm",
+    "converter",
+    "hpc",
+    "job-submission"
+  ]
+}
