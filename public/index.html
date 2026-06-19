@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PBS to Slurm Converter</title>
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="hero">
+            <p class="eyebrow">HPC migration utility</p>
+            <h1>PBS to Slurm Converter</h1>
+            <p class="lede">Paste a PBS/Torque/PBS Pro batch script and get a Slurm-compatible script instantly.</p>
+        </section>
+
+        <section class="toolbar" aria-label="Converter actions">
+            <button type="button" id="loadExampleBtn">Load Example</button>
+            <button type="button" id="copyOutputBtn">Copy Slurm Script</button>
+            <button type="button" id="downloadOutputBtn">Download Slurm Script</button>
+            <button type="button" id="clearBtn" class="secondary">Clear</button>
+        </section>
+
+        <section class="converter-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>PBS Input</h2>
+                    <span id="inputLineCount" class="badge">0 lines</span>
+                </div>
+                <textarea id="pbsInput" spellcheck="false" placeholder="Paste your PBS script here, or click Load Example..."></textarea>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Slurm Output</h2>
+                    <span id="outputLineCount" class="badge">0 lines</span>
+                </div>
+                <textarea id="slurmOutput" spellcheck="false" readonly placeholder="Converted Slurm script appears here automatically..."></textarea>
+            </div>
+        </section>
+
+        <section class="report-grid">
+            <article class="report-card">
+                <h2>Conversion Summary</h2>
+                <ul id="summaryList"></ul>
+            </article>
+
+            <article class="report-card warning-card">
+                <h2>Warnings / Unsupported</h2>
+                <ul id="warningsList"></ul>
+            </article>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>
+            © <span id="currentYear"></span> PBS to Slurm Converter |
+            <a href="https://github.com/safesploitOrg/pbs-to-slurm-converter">Source Code</a>
+        </p>
+    </footer>
+
+    <script src="assets/js/converter.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>
