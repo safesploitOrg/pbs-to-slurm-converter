@@ -1,0 +1,8 @@
+#!/bin/bash
+#PBS -N torque-job
+#PBS -l nodes=3:ppn=8:gpus=1
+#PBS -l walltime=10:00:00
+#PBS -t 1-5
+
+cd $PBS_O_WORKDIR
+./application

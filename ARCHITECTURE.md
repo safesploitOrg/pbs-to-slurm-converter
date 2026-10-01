@@ -1,330 +1,308 @@
 # Architecture
 
-## Project Purpose
+## Purpose
 
-`pbs-to-slurm-converter` is a static, browser-based utility for converting PBS/Torque/PBS Pro job submission scripts into Slurm job scripts.
+`pbs-to-slurm-converter` is a static, dependency-free browser utility for converting HPC batch scripts between PBS-family schedulers and Slurm.
 
-The project is intentionally dependency-free so it can be hosted from GitHub Pages, opened locally from disk, or served by any simple static web server.
+Version 1.1 introduced bidirectional conversion and deliberately avoids two independent conversion engines. The architecture is based on a scheduler-neutral intermediate model.
+
+## Design Principles
+
+1. **DRY conversion logic** - parse scheduler syntax once into neutral semantics and render those semantics for the target scheduler.
+2. **Safety over false precision** - ambiguous mappings generate warnings and review comments instead of silently changing job meaning.
+3. **Scheduler syntax stays at the edge** - PBS syntax belongs in PBS modules; Slurm syntax belongs in Slurm modules.
+4. **No framework or backend** - the deployed application remains static and auditable.
+5. **Production code is directly tested** - tests import the same modules used by the browser.
+6. **Extensible scheduler model** - a future scheduler requires a parser and renderer rather than pairwise converters for every existing scheduler.
+
+## Conversion Pipeline
+
+```text
+PBS input                          Slurm input
+   |                                  |
+   v                                  v
+PBS parser                         Slurm parser
+   |                                  |
+   +--------------+  +----------------+
+                  |  |
+                  v  v
+                JobModel
+                  |
+          shared normalisation
+          and diagnostics
+                  |
+        +---------+---------+
+        |                   |
+        v                   v
+   PBS renderer        Slurm renderer
+        |                   |
+        v                   v
+     PBS output          Slurm output
+```
+
+The orchestrator in `core/converter.js` chooses the source parser and target renderer.
 
 ## Repository Layout
 
 ```text
 pbs-to-slurm-converter/
-├── README.md
-├── ARCHITECTURE.md
-├── package.json
-├── .github/
-│   └── workflows/
-│       └── static.yml
-├── tests/
-│   └── converter.test.js
-└── public/
-    ├── index.html
-    └── assets/
-        ├── css/
-        │   └── styles.css
-        └── js/
-            ├── converter.js
-            └── main.js
+|-- README.md
+|-- ARCHITECTURE.md
+|-- SUPPORT_MATRIX.md
+|-- CHANGELOG.md
+|-- package.json
+|-- .github/
+|   `-- workflows/
+|       `-- static.yml
+|-- public/
+|   |-- index.html
+|   `-- assets/
+|       |-- css/
+|       |   `-- styles.css
+|       |-- favicon/
+|       |   `-- binary.svg
+|       `-- js/
+|           |-- core/
+|           |   |-- capabilities.js
+|           |   |-- converter.js
+|           |   |-- diagnostics.js
+|           |   |-- environment.js
+|           |   |-- io-patterns.js
+|           |   |-- job-model.js
+|           |   |-- script-analysis.js
+|           |   |-- utils.js
+|           |   `-- version.js
+|           |-- schedulers/
+|           |   |-- pbs/
+|           |   |   |-- constants.js
+|           |   |   |-- parser.js
+|           |   |   |-- renderer.js
+|           |   |   |-- resources.js
+|           |   |   `-- dialects/
+|           |   |       |-- openpbs.js
+|           |   |       |-- pbspro.js
+|           |   |       `-- torque.js
+|           |   `-- slurm/
+|           |       |-- constants.js
+|           |       |-- parser.js
+|           |       |-- renderer.js
+|           |       `-- resources.js
+|           `-- ui/
+|               |-- download.js
+|               |-- editor.js
+|               |-- examples.js
+|               `-- main.js
+`-- tests/
+    |-- core/
+    |-- schedulers/
+    |   |-- pbs/
+    |   `-- slurm/
+    |-- integration/
+    `-- fixtures/
+        |-- pbs/
+        `-- slurm/
 ```
 
-## Runtime Model
+## JobModel
 
-The application runs fully client-side in the browser.
+The `JobModel` is the canonical scheduler-neutral representation.
 
-```text
-User PBS input
-    ↓
-input event listener in main.js
-    ↓
-convertPbsToSlurm() in converter.js
-    ↓
-Slurm output + summary + warnings
-    ↓
-DOM update in main.js
-```
-
-The browser-side application requires no backend, database, API, or build process. A minimal `package.json` is included only for development tooling (unit testing via Node.js).
-
-## File Responsibilities
-
-### `public/index.html`
-
-Owns the page structure only.
-
-Responsibilities:
-
-- Defines the PBS input textarea.
-- Defines the Slurm output textarea.
-- Defines toolbar buttons.
-- Defines summary and warning panels.
-- Defines footer and source link.
-- Loads CSS and JavaScript from `public/assets/`.
-
-Avoid placing conversion logic or styling directly in this file.
-
-### `public/assets/css/styles.css`
-
-Owns all visual styling.
-
-Responsibilities:
-
-- Page layout.
-- Responsive grid behaviour.
-- Textarea sizing and readability.
-- Button styling.
-- Summary/warning panel styling.
-- Footer styling.
-
-Keep CSS class names descriptive and stable because JavaScript may depend on some UI structure, but JavaScript should primarily target IDs.
-
-### `public/assets/js/converter.js`
-
-Owns PBS to Slurm conversion logic.
-
-Responsibilities:
-
-- Store the default PBS example in `PBS_EXAMPLE`.
-- Convert PBS directives to Slurm directives.
-- Convert known PBS environment variables.
-- Generate conversion summary messages.
-- Generate warnings for unsupported or review-required syntax.
-
-Important functions:
-
-| Function | Purpose |
-|---|---|
-| `convertPbsToSlurm(input)` | Main conversion entry point. |
-| `convertDirective(line, summary, warnings)` | Converts one `#PBS` directive. |
-| `replaceEnvironmentVariables(line)` | Converts PBS environment variables in non-directive script lines. |
-| `normaliseWalltime(value)` | Converts PBS walltime into Slurm-compatible time format. |
-| `parseNodeRequest(value)` | Converts `nodes=X:ppn=Y`. |
-| `parseSelectRequest(value)` | Converts PBS Pro `select=` syntax. |
-| `mapMailType(value)` | Converts PBS mail flags to Slurm mail types. |
-
-This file should not read from or write to the DOM.
-
-### `public/assets/js/main.js`
-
-Owns browser interaction and DOM updates.
-
-Responsibilities:
-
-- Attach event listeners.
-- Trigger live conversion when users type or paste PBS content.
-- Load the example script when requested.
-- Copy Slurm output to clipboard.
-- Download generated Slurm output as a `.slurm` file.
-- Render line counts, summary messages, and warnings.
-- Set the current year in the footer.
-
-Important functions:
-
-| Function | Purpose |
-|---|---|
-| `initialiseConverter()` | Main UI initialisation function. |
-| `setCurrentYear()` | Sets the footer year dynamically. |
-| `renderList(element, items, emptyMessage)` | Renders summary/warning lists safely. |
-| `downloadTextFile(filename, content)` | Downloads generated output. |
-| `countLines(value)` | Counts textarea lines for UI badges. |
-
-This file should not contain PBS to Slurm conversion rules.
-
-## Conversion Design
-
-The converter is line-oriented by design.
-
-For each input line:
-
-1. If the line starts with `#PBS`, it is handled as a scheduler directive.
-2. If the line does not start with `#PBS`, known PBS environment variables are replaced.
-3. Unsupported PBS directives are preserved as comments and surfaced in the warning panel.
-
-This is safer than silently dropping unknown scheduler options.
-
-## Supported Conversion Categories
-
-Current categories include:
-
-- Job name.
-- Queue to partition.
-- Nodes and processors per node.
-- PBS Pro `select=` resource requests.
-- Walltime.
-- Memory and per-CPU memory.
-- GPU requests.
-- Standard output and error files.
-- Joined output/error handling.
-- Mail notification settings.
-- Job arrays.
-- Environment export.
-- Variable export.
-- Job dependencies.
-- Group/account conversion.
-- Requeue/no-requeue behaviour.
-- Common PBS environment variables.
-
-## Known Review Areas
-
-Some PBS syntax is cluster-specific and should trigger warnings rather than pretending the conversion is perfect.
-
-Examples:
-
-- Complex `select=` statements.
-- Site-specific queues/partitions.
-- GPU syntax that differs by cluster.
-- Account/project/group mappings.
-- Environment export policy.
-- MPI launch commands such as `mpiexec`, `mpirun`, and `srun`.
-
-Do not assume all clusters use the same Slurm policy.
-
-## Adding a New Conversion Rule
-
-When adding a new PBS directive conversion:
-
-1. Add the rule inside `convertDirective()` in `converter.js`.
-2. Push a concise human-readable message into `summary` when conversion succeeds.
-3. Push a warning into `warnings` when manual review is recommended.
-4. Preserve unsupported or ambiguous content as a comment in the output.
-5. Add or update an example that covers the new rule.
-6. Test live conversion in the browser.
-
-Preferred rule shape:
+Major sections are:
 
 ```javascript
-if (directive.startsWith("-x ")) {
-    summary.push("Example directive converted");
-    return [`#SBATCH --example=${directive.slice(3).trim()}`];
+{
+    source: {},
+    job: {},
+    resources: {},
+    io: {},
+    notifications: {},
+    array: null,
+    environment: {},
+    dependencies: [],
+    script: {},
+    unsupported: []
 }
 ```
 
-## JavaScript Conventions
+### Job identity
 
-Use plain JavaScript only.
+Stores job name, queue/partition concept, account, project, execution group, hold state, rerunnable/requeue intent, and delayed start time.
 
-Conventions:
+Accounting, project, and execution group are deliberately separate. For example, PBS `group_list` must not be translated into Slurm `--account`.
 
-- Use `const` by default.
-- Use `let` only when reassignment is needed.
-- Keep functions small and named by purpose.
-- Keep conversion logic pure where practical.
-- Avoid adding dependencies unless there is a strong reason.
-- Avoid mixing DOM logic into `converter.js`.
-- Avoid mixing conversion rules into `main.js`.
+### Resources
 
-## CSS Conventions
+The model supports both scheduler-neutral topology and PBS-specific chunk semantics without making the core model Slurm-centric.
 
-- Keep layout responsive.
-- Keep textareas large enough for real HPC scripts.
-- Prefer readable spacing over dense UI.
-- Use semantic class names.
-- Avoid inline styles.
-- Avoid external CSS frameworks unless the project intentionally changes direction.
+Relevant fields include:
 
-## HTML Conventions
+- `walltimeSeconds`
+- PBS `chunks[]`
+- legacy PBS/TORQUE `legacyNodes`
+- `nodes`
+- `tasks`
+- `tasksPerNode`
+- `cpusPerTask`
+- scoped `memory[]`
+- scoped `gpus[]`
+- placement and exclusivity
+- custom/site-specific resources
 
-- Keep IDs stable because `main.js` depends on them.
-- Keep asset paths relative so the site works locally and on GitHub Pages.
-- Keep the app usable without a build step.
+PBS `select` is represented as chunks because a chunk is not always equivalent to a physical Slurm node. The Slurm renderer records an explicit warning when it has to assume one chunk per node.
 
-Current required IDs:
+### Script body
 
-| ID | Used For |
-|---|---|
-| `pbsInput` | PBS input textarea. |
-| `slurmOutput` | Slurm output textarea. |
-| `loadExampleBtn` | Loads `PBS_EXAMPLE`. |
-| `copyOutputBtn` | Copies Slurm output. |
-| `downloadOutputBtn` | Downloads Slurm output. |
-| `clearBtn` | Clears the input. |
-| `summaryList` | Conversion summary list. |
-| `warningsList` | Warning/unsupported list. |
-| `inputLineCount` | PBS input line count. |
-| `outputLineCount` | Slurm output line count. |
-| `currentYear` | Dynamic footer year. |
+Scheduler directives are removed from the active script body during parsing. The shebang is stored separately.
 
-## Unit Testing
+A directive appearing after executable content has started is preserved in the body with a warning because both scheduler families normally stop scanning active scheduler directives once script commands have begun.
 
-### Running Tests
+## PBS Family
 
-Unit tests are located in `tests/converter.test.js` and test pure converter functions in isolation.
+The PBS parser is shared across OpenPBS, PBS Professional, and TORQUE.
 
-```bash
-npm test
+Dialect-specific behaviour is configuration rather than duplicated conversion logic.
+
+### Modern PBS
+
+OpenPBS/PBS Professional output favours:
+
+```text
+#PBS -l select=...
+#PBS -l place=...
 ```
 
-Tests use Node.js built-in `assert` module with no external dependencies. The test file recreates the core conversion functions (`normaliseWalltime`, `parseNodeRequest`, `parseSelectRequest`, `mapMailType`, `convertDependency`) in a testable Node.js environment.
+### TORQUE
 
-Current test coverage includes:
-- Walltime normalization (HH:MM:SS → Slurm format with days)
-- Node and PPN request parsing
-- PBS Pro `select=` statement parsing
-- Mail type mapping (PBS → Slurm)
-- Job dependency conversion
+TORQUE target mode can render legacy resources such as:
 
-### CI/CD Integration
+```text
+#PBS -l nodes=2:ppn=8
+```
 
-The `.github/workflows/static.yml` workflow runs tests **before** GitHub Pages deployment:
+and uses `-t` for arrays rather than modern PBS `-J`.
 
-1. **Test job** runs `npm test` on push to `main`
-2. **Deploy job** depends on test job succeeding
-3. **Deployment is blocked** if any test fails
+## Slurm
 
-This ensures broken conversions are never deployed to production.
+The Slurm parser handles common `sbatch` long and short options and maps them into the same neutral fields used by PBS.
 
-## Manual Testing Checklist
+Slurm-only concepts that have no portable PBS representation, such as QOS or reservations, are preserved as review comments rather than discarded.
 
-Before committing changes:
+## Diagnostics
 
-- Run `npm test` and confirm all tests pass.
-- Open `public/index.html` in a browser.
-- Confirm the page loads with styling applied.
-- Confirm textareas are empty by default.
-- Click `Load Example`.
-- Confirm output updates immediately.
-- Type or paste into PBS input and confirm live conversion.
-- Confirm summary and warnings update.
-- Confirm `Copy Slurm Script` works.
-- Confirm `Download Slurm Script` downloads a `.slurm` file.
-- Confirm footer year is populated.
-- Confirm browser console has no JavaScript errors.
+Diagnostics have a stable structure:
 
-## Suggested AI Agent Workflow
+```javascript
+{
+    code,
+    message,
+    severity,
+    line,
+    scheduler
+}
+```
 
-When using an AI agent to improve this project, give it this order of operations:
+The UI currently presents them as two lists:
 
-1. Read `README.md`.
-2. Read `ARCHITECTURE.md`.
-3. Inspect `public/index.html`.
-4. Inspect `public/assets/js/converter.js`.
-5. Inspect `public/assets/js/main.js`.
-6. Inspect `public/assets/css/styles.css`.
-7. Make the smallest safe change.
-8. Test with at least one PBS input example.
-9. Report exactly what changed.
+- conversion summary (`info`)
+- warnings/manual review (`warning` and `error`)
 
-## Non-Goals
+Future UI changes can use the structured diagnostics without changing parser logic.
 
-For now, the project does not aim to be:
+## Environment Variables
 
-- A full parser for every PBS/PBS Pro/Torque variant.
-- A cluster-specific migration tool.
-- A backend service.
-- A Node.js application.
-- A package-managed frontend framework app.
+Runtime environment-variable translation is centralised in `core/environment.js`. Scheduler directive filename patterns are handled separately by `core/io-patterns.js` because `#SBATCH` directives do not perform shell expansion.
 
-Those may be future directions, but the current design favours portability, auditability, and simplicity.
+Direct semantic pairs include:
 
-## Future Enhancements
+```text
+PBS_JOBID       <-> SLURM_JOB_ID
+PBS_JOBNAME     <-> SLURM_JOB_NAME
+PBS_O_WORKDIR   <-> SLURM_SUBMIT_DIR
+PBS_O_HOST      <-> SLURM_SUBMIT_HOST
+PBS_ARRAY_INDEX <-> SLURM_ARRAY_TASK_ID
+PBS_QUEUE       <-> SLURM_JOB_PARTITION
+```
 
-Potential improvements:
+Output/error directive paths also stay separate from runtime shell-variable translation. PBS-style `$PBS_JOBID`/`$PBS_JOBNAME` intent can be translated to Slurm `%j`/`%x` filename patterns, while Slurm `%` filename patterns are preserved as review comments when targeting PBS because modern PBS does not provide a portable equivalent.
 
-- Add a formal conversion rules table.
-- Add unit tests using a lightweight test runner.
-- Add GitHub Actions for basic syntax checks.
-- Add more PBS Pro `select=` coverage.
-- Add Slurm policy profiles for different clusters.
-- Add optional `srun` migration hints for MPI jobs.
-- Add downloadable conversion reports.
-- Add GitHub Pages deployment instructions.
+Non-equivalent runtime concepts stay distinct. In particular:
+
+```text
+PBS_NODEFILE != SLURM_JOB_NODELIST
+```
+
+The former is a file path and the latter is a node-list expression. The converter therefore preserves the original variable and emits a warning.
+
+## Script Body Analysis
+
+`core/script-analysis.js` scans preserved executable lines for scheduler-specific launch/control commands. It does not rewrite application commands automatically. For example, `srun` is preserved when targeting PBS but a review warning is emitted, while `mpiexec`/`mpirun` are preserved when targeting Slurm with a reminder to verify the MPI integration expected by the target cluster.
+
+## Unsupported and Ambiguous Syntax
+
+Unsupported source directives are retained in `job.unsupported` and emitted in target output as comments such as:
+
+```text
+# REVIEW: source SLURM directive preserved: #SBATCH --qos=gold
+```
+
+This is intentional. The converter must not make an invalid script look authoritative by silently dropping scheduler policy.
+
+## Testing Strategy
+
+Tests use Node.js built-in `node:test` and import the production ES modules directly.
+
+### Unit tests
+
+Cover scheduler-neutral utilities such as durations, memory, arrays, and start times.
+
+### Parser tests
+
+Verify PBS and Slurm syntax becomes the expected `JobModel` semantics.
+
+### Integration tests
+
+Verify complete PBS -> Slurm and Slurm -> PBS output.
+
+### Round-trip tests
+
+Verify portable semantics survive:
+
+```text
+PBS -> Slurm -> PBS
+```
+
+Round-trip tests compare parsed semantics rather than exact text formatting.
+
+## CI/CD
+
+On pushes to `main`:
+
+1. JavaScript syntax checks run.
+2. Full tests run.
+3. GitHub Pages deployment occurs only if both succeed.
+
+## Adding a New Conversion Capability
+
+1. Identify the scheduler-neutral semantic concept.
+2. Add a `JobModel` field only if an existing field cannot represent it.
+3. Parse the source scheduler option into that field.
+4. Render the target scheduler option from that field.
+5. If semantics are approximate, emit a diagnostic.
+6. If no portable representation exists, preserve it as a review comment.
+7. Add parser and integration tests in both relevant directions.
+8. Update `SUPPORT_MATRIX.md` and `CHANGELOG.md`.
+
+Do not add direct PBS-to-Slurm or Slurm-to-PBS special cases to the UI.
+
+## Future Scheduler Support
+
+The architecture can be extended with another scheduler by adding:
+
+```text
+schedulers/<scheduler>/parser.js
+schedulers/<scheduler>/renderer.js
+```
+
+and registering them with the core converter.
+
+This avoids the N x (N - 1) pairwise-converter problem.
