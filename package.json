@@ -1,14 +1,21 @@
 {
   "name": "pbs-to-slurm-converter",
-  "version": "1.0.0",
-  "description": "Browser-based utility for converting PBS/Torque job scripts to Slurm",
+  "version": "1.1.0",
+  "description": "Dependency-free browser utility for bidirectional PBS/OpenPBS/PBS Pro/TORQUE and Slurm batch-script conversion",
   "type": "module",
   "scripts": {
-    "test": "node tests/converter.test.js"
+    "test": "node --test",
+    "check": "node --check public/assets/js/core/converter.js && node --check public/assets/js/schedulers/pbs/parser.js && node --check public/assets/js/schedulers/pbs/renderer.js && node --check public/assets/js/schedulers/slurm/parser.js && node --check public/assets/js/schedulers/slurm/renderer.js && node --check public/assets/js/ui/main.js"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "devDependencies": {},
   "keywords": [
     "pbs",
+    "openpbs",
+    "pbs-pro",
+    "torque",
     "slurm",
     "converter",
     "hpc",

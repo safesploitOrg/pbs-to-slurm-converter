@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -N research-job
+#PBS -q batch
+#PBS -A science
+#PBS -l select=2:ncpus=8:mpiprocs=4:ompthreads=2:mem=32gb:ngpus=1
+#PBS -l place=scatter:exclhost
+#PBS -l walltime=25:30:00
+#PBS -o $PBS_JOBNAME-$PBS_JOBID.out
+#PBS -j oe
+#PBS -m abe
+#PBS -M user@example.com
+#PBS -J 1-20%4
+#PBS -V
+
+cd $PBS_O_WORKDIR
+mpiexec ./application

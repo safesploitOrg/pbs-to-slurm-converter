@@ -3,21 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PBS to Slurm Converter</title>
+    <meta name="description" content="Bidirectional PBS and Slurm batch script converter">
+    <title>PBS / Slurm Converter</title>
     <link rel="stylesheet" href="assets/css/styles.css">
-    <link rel="icon" type="image/png" href="assets/favicon/binary.png">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon/binary.svg">
 </head>
 <body>
     <main class="page-shell">
         <section class="hero">
             <p class="eyebrow">HPC migration utility</p>
-            <h1>PBS to Slurm Converter</h1>
-            <p class="lede">Paste a PBS/Torque/PBS Pro batch script and get a Slurm-compatible script instantly.</p>
+            <h1>PBS / Slurm Converter</h1>
+            <p class="lede">Convert job scripts in either direction using a scheduler-neutral job model. Ambiguous or scheduler-specific behaviour is flagged for manual review rather than silently discarded.</p>
+        </section>
+
+        <section class="direction-card" aria-label="Conversion direction">
+            <label>
+                <span>From</span>
+                <select id="sourceScheduler">
+                    <option value="pbs" selected>PBS / OpenPBS / PBS Pro / TORQUE</option>
+                    <option value="slurm">Slurm</option>
+                </select>
+            </label>
+
+            <button type="button" id="swapBtn" class="swap" aria-label="Swap conversion direction">Swap direction</button>
+
+            <label>
+                <span>To</span>
+                <select id="targetScheduler">
+                    <option value="slurm" selected>Slurm</option>
+                    <option value="pbs">PBS</option>
+                </select>
+            </label>
+
+            <label id="targetDialectField" hidden>
+                <span>PBS target dialect</span>
+                <select id="targetDialect">
+                    <option value="openpbs" selected>OpenPBS</option>
+                    <option value="pbspro">PBS Professional</option>
+                    <option value="torque">TORQUE (legacy nodes/ppn)</option>
+                </select>
+            </label>
         </section>
 
         <section class="toolbar" aria-label="Converter actions">
             <button type="button" id="loadExampleBtn">Load Example</button>
-            <button type="button" id="copyOutputBtn">Copy Slurm Script</button>
+            <button type="button" id="copyOutputBtn">Copy Output</button>
             <button type="button" id="downloadOutputBtn">Download Slurm Script</button>
             <button type="button" id="clearBtn" class="secondary">Clear</button>
         </section>
@@ -25,18 +55,21 @@
         <section class="converter-grid">
             <div class="panel">
                 <div class="panel-header">
-                    <h2>PBS Input</h2>
+                    <div>
+                        <h2 id="sourceLabel">PBS / OpenPBS / PBS Pro / TORQUE Input</h2>
+                        <span id="detectedDialect" class="subtle"></span>
+                    </div>
                     <span id="inputLineCount" class="badge">0 lines</span>
                 </div>
-                <textarea id="pbsInput" spellcheck="false" placeholder="Paste your PBS script here, or click Load Example..."></textarea>
+                <textarea id="sourceInput" spellcheck="false" aria-label="Source scheduler script" placeholder="Paste a batch script here, or click Load Example..."></textarea>
             </div>
 
             <div class="panel">
                 <div class="panel-header">
-                    <h2>Slurm Output</h2>
+                    <h2 id="targetLabel">Slurm Output</h2>
                     <span id="outputLineCount" class="badge">0 lines</span>
                 </div>
-                <textarea id="slurmOutput" spellcheck="false" readonly placeholder="Converted Slurm script appears here automatically..."></textarea>
+                <textarea id="targetOutput" spellcheck="false" readonly aria-label="Converted scheduler script" placeholder="Converted script appears here automatically..."></textarea>
             </div>
         </section>
 
@@ -47,7 +80,7 @@
             </article>
 
             <article class="report-card warning-card">
-                <h2>Warnings / Unsupported</h2>
+                <h2>Warnings / Manual Review</h2>
                 <ul id="warningsList"></ul>
             </article>
         </section>
@@ -55,12 +88,11 @@
 
     <footer class="site-footer">
         <p>
-            © <span id="currentYear"></span> PBS to Slurm Converter |
-            <a href="https://github.com/safesploitOrg/pbs-to-slurm-converter" target="_blank">Source Code</a>
+            <span id="appVersion"></span> | &copy; <span id="currentYear"></span> PBS / Slurm Converter |
+            <a href="https://github.com/safesploitOrg/pbs-to-slurm-converter" target="_blank" rel="noopener noreferrer">Source Code</a>
         </p>
     </footer>
 
-    <script src="assets/js/converter.js"></script>
-    <script src="assets/js/main.js"></script>
+    <script type="module" src="assets/js/ui/main.js"></script>
 </body>
 </html>
