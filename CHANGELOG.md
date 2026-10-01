@@ -14,6 +14,25 @@ The project follows Semantic Versioning.
 
 ### Security
 
+## [1.3.0] - 2026-10-01
+
+### Added
+
+- Collapsible **Job submission & management helper** between the code editors and conversion summary/review panels.
+- Side-by-side **How to run this PBS job** and **How to run this Slurm job** command columns.
+- Copy buttons for submit, job-list, job-detail, cancel, output-following, and advanced helper commands.
+- Advanced PBS commands for queues, nodes, historical jobs, and arrays.
+- Advanced Slurm commands for partitions/nodes, accounting/history, running-job statistics, and arrays.
+- Unit tests for helper command data, target emphasis, page placement, and UI integration.
+
+### Changed
+
+- Expanded the example catalogue from minimal directive demonstrations into realistic runnable-style job scripts.
+- Updated the Send Email examples with job metadata, hostname/timestamps, a short workload, and a safe placeholder email address.
+- Recommended examples now provide enough surrounding context to teach normal batch-script structure as well as exercise conversion logic.
+- The current conversion target is highlighted in the helper while both scheduler command columns remain visible.
+- Expanded the Node test suite from 85 tests to 96 tests.
+
 ## [1.2.0] - 2026-10-01
 
 ### Added

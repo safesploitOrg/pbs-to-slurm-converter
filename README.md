@@ -11,7 +11,8 @@ A lightweight, dependency-free browser utility for converting HPC batch scripts 
 - CPU/task topology, memory, GPU, walltime, arrays, mail, dependencies, environment export, working directory, output/error, delayed start, hold, and requeue handling.
 - Structured warnings and `REVIEW` comments for scheduler-specific or ambiguous semantics.
 - Categorised **Load Example** menu with Recommended examples first.
-- Scheduler-aware examples for PBS and Slurm source scripts.
+- Scheduler-aware, realistic runnable-style PBS and Slurm example scripts.
+- Collapsible two-column PBS/Slurm job submission and management helper with copyable commands.
 - No backend, frontend framework, build step, or runtime dependencies.
 
 ## Example Catalogue
@@ -25,7 +26,11 @@ Recommended examples:
 
 Additional categories include General, Parallel Workloads, Resources, Scheduling, and Compatibility. The catalogue also includes OpenMP, hybrid MPI/OpenMP, job arrays, dependencies, delayed start, legacy TORQUE, output/error patterns, environment variables, and an intentionally unsupported/review-required example.
 
-The same example registry is imported by the automated tests, so UI examples cannot drift independently from converter behaviour.
+The same example registry is imported by the automated tests, so UI examples cannot drift independently from converter behaviour. Recommended examples include job metadata, short workloads, scheduler runtime variables, and practical output suitable for learning as well as regression testing.
+
+## Job Submission Helper
+
+Below the code editors, the browser UI includes a collapsed **Job submission & management helper**. When opened it shows PBS and Slurm side by side, including submit, queue/status, job-detail, cancellation, and output-following commands. The current conversion target is highlighted and an Advanced commands section provides common queue/partition, node, accounting/history, and array commands.
 
 ## Running Locally
 
