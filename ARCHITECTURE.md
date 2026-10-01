@@ -4,7 +4,7 @@
 
 `pbs-to-slurm-converter` is a static, dependency-free browser utility for converting HPC batch scripts between PBS-family schedulers and Slurm.
 
-Version 1.1 introduced bidirectional conversion and deliberately avoided two independent conversion engines. Version 1.2 adds a scheduler-aware example catalogue, stronger parser validation, and a substantially expanded regression suite. The architecture remains based on a scheduler-neutral intermediate model.
+Version 1.1 introduced bidirectional conversion and deliberately avoided two independent conversion engines. Version 1.2 added a scheduler-aware example catalogue and expanded regression coverage. Version 1.3 makes the catalogue more realistic and adds a data-driven PBS/Slurm command helper. The architecture remains based on a scheduler-neutral intermediate model.
 
 ## Design Principles
 
@@ -77,6 +77,8 @@ pbs-to-slurm-converter/
 |           |   |-- index.js
 |           |   |-- pbs.js
 |           |   `-- slurm.js
+|           |-- helpers/
+|           |   `-- commands.js
 |           |-- schedulers/
 |           |   |-- pbs/
 |           |   |   |-- constants.js
@@ -96,6 +98,7 @@ pbs-to-slurm-converter/
 |               |-- download.js
 |               |-- editor.js
 |               |-- example-menu.js
+|               |-- command-helper.js
 |               `-- main.js
 `-- tests/
     |-- core/
@@ -130,6 +133,29 @@ examples/index.js
 The first menu group is **Recommended**. Recommended examples are intentionally omitted from their normal category groups so each example appears exactly once.
 
 Scheduler-specific examples are allowed. For example, the Legacy TORQUE example exists only for PBS-family source input and is automatically filtered from the Slurm source menu.
+
+Examples are intentionally realistic rather than directive-only snippets. Recommended examples include job metadata, short workloads, runtime scheduler variables, output/error behaviour, and scheduler-specific launch commands where those concepts are the point of the example. This improves their value as both learning material and integration fixtures.
+
+## Job Submission Helper
+
+Command knowledge is stored in `helpers/commands.js`, not hard-coded into page markup or `main.js`. The helper exposes PBS and Slurm command plans side by side and marks the current target scheduler without hiding the other scheduler.
+
+```text
+helpers/commands.js
+       |
+       +-- PBS qsub/qstat/qdel commands
+       +-- Slurm sbatch/squeue/scancel commands
+       +-- advanced command groups
+       |
+       v
+ui/command-helper.js
+       |
+       +-- two-column collapsible helper
+       +-- current-target emphasis
+       `-- per-command Copy actions
+```
+
+The helper remains collapsed by default and is placed between the code editors and conversion summary/review panels. This keeps the primary conversion workflow uncluttered while providing an immediately available migration/reference aid.
 
 ## JobModel
 
@@ -324,7 +350,7 @@ Every UI example is converted through the real production converter. Portable ex
 
 ### UI tests
 
-Pure menu-plan tests verify grouping, Recommended-first ordering, scheduler filtering, and no duplicated Recommended entries. An optional Python Playwright smoke test (`npm run test:ui`) exercises the real rendered dropdown and scheduler switching when browser automation is available.
+Pure menu-plan tests verify grouping, Recommended-first ordering, scheduler filtering, and no duplicated Recommended entries. Command-helper tests verify both scheduler columns, target emphasis, core/advanced commands, and page placement. An optional Python Playwright smoke test (`npm run test:ui`) exercises the real rendered dropdown, helper panel, and scheduler switching when browser automation is available.
 
 ### Commands
 

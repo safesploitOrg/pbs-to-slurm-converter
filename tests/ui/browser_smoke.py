@@ -79,11 +79,22 @@ def main():
         assert "#PBS -M user@example.com" in page.input_value("#sourceInput")
         assert "#SBATCH --mail-user=user@example.com" in page.input_value("#targetOutput")
 
+        page.locator("#jobHelper > summary").click()
+        helper_columns = page.locator("#jobHelper [data-helper-primary] .command-column")
+        assert helper_columns.count() == 2
+        assert "How to run this PBS job" in helper_columns.nth(0).inner_text()
+        assert "How to run this Slurm job" in helper_columns.nth(1).inner_text()
+        assert helper_columns.nth(1).get_attribute("class").find("is-target") >= 0
+        assert "qsub converted.pbs" in helper_columns.nth(0).inner_text()
+        assert "sbatch converted.slurm" in helper_columns.nth(1).inner_text()
+
         page.select_option("#sourceScheduler", "slurm")
         page.select_option("#exampleSelect", "send-email")
         assert "#SBATCH --mail-user=user@example.com" in page.input_value("#sourceInput")
         assert "#PBS -M user@example.com" in page.input_value("#targetOutput")
         assert page.locator("#targetDialectField").is_visible()
+        helper_columns = page.locator("#jobHelper [data-helper-primary] .command-column")
+        assert helper_columns.nth(0).get_attribute("class").find("is-target") >= 0
 
         page.click("#swapBtn")
         assert page.input_value("#sourceScheduler") == "pbs"

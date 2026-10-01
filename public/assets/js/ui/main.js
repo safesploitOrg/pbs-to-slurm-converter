@@ -4,6 +4,7 @@ import { downloadTextFile, outputFilename } from "./download.js";
 import { countLines, renderList, schedulerLabel } from "./editor.js";
 import { getExampleById } from "../examples/index.js";
 import { populateExampleSelect } from "./example-menu.js";
+import { attachCommandCopyHandler, renderCommandHelper } from "./command-helper.js";
 
 const SOURCE_TO_TARGET = Object.freeze({
     pbs: "slurm",
@@ -29,6 +30,7 @@ function initialiseConverter() {
     const inputLineCount = document.getElementById("inputLineCount");
     const outputLineCount = document.getElementById("outputLineCount");
     const detectedDialect = document.getElementById("detectedDialect");
+    const jobHelper = document.getElementById("jobHelper");
 
     function synchroniseTarget() {
         if (sourceScheduler.value === targetScheduler.value) {
@@ -41,6 +43,7 @@ function initialiseConverter() {
         targetLabel.textContent = `${schedulerLabel(targetScheduler.value)} Output`;
         targetDialectField.hidden = targetScheduler.value !== "pbs";
         downloadOutputBtn.textContent = `Download ${targetScheduler.value === "pbs" ? "PBS" : "Slurm"} Script`;
+        renderCommandHelper(jobHelper, targetScheduler.value);
     }
 
     function refreshExamples() {
@@ -147,6 +150,8 @@ function initialiseConverter() {
         refreshConversion();
         sourceInput.focus();
     });
+
+    attachCommandCopyHandler(jobHelper);
 
     document.getElementById("currentYear").textContent = String(new Date().getFullYear());
     document.getElementById("appVersion").textContent = `v${APP_VERSION}`;

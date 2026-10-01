@@ -1,6 +1,6 @@
 {
   "name": "pbs-to-slurm-converter",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Dependency-free browser utility for bidirectional PBS/OpenPBS/PBS Pro/TORQUE and Slurm batch-script conversion",
   "type": "module",
   "scripts": {

@@ -15,7 +15,7 @@ npm run test:ui
 
 ## Coverage Areas
 
-The v1.2 suite contains 85 Node tests covering:
+The v1.3 suite contains 96 Node tests covering:
 
 - core conversion orchestration,
 - PBS and Slurm parsers,
@@ -35,6 +35,8 @@ The v1.2 suite contains 85 Node tests covering:
 - full conversion integration,
 - semantic round trips,
 - example-registry/menu logic,
+- realistic Recommended example structure,
+- PBS/Slurm command-helper catalogue and target emphasis,
 - every shipped PBS and Slurm example.
 
 ## Core Invariants
@@ -48,3 +50,4 @@ Tests enforce several safety properties:
 5. Scheduler-specific GPU type/property information must be surfaced for review when it cannot be expressed portably.
 6. Recommended examples appear once, before normal categories.
 7. The example catalogue and regression tests share the same production data.
+8. The command helper always exposes both scheduler families and only changes emphasis based on the current target.

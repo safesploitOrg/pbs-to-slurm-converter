@@ -42,3 +42,29 @@ test("scheduler-specific examples are filtered cleanly", () => {
     assert(getExamplesForScheduler("pbs").some((example) => example.id === "legacy-torque"));
     assert.equal(getExampleById("slurm", "legacy-torque"), null);
 });
+
+test("recommended examples are realistic runnable-style scripts rather than directive-only snippets", () => {
+    for (const scheduler of ["pbs", "slurm"]) {
+        for (const id of ["basic-job", "send-email", "mpi-job", "gpu-job"]) {
+            const example = getExampleById(scheduler, id);
+            assert(example.script.split(/\r?\n/).length >= 15, `${scheduler}:${id}`);
+            assert.match(example.script, /\$\(hostname\)|nvidia-smi|mpiexec|srun/, `${scheduler}:${id}`);
+        }
+    }
+});
+
+test("Send Email example includes notification settings, job metadata and a short workload", () => {
+    const pbs = getExampleById("pbs", "send-email").script;
+    const slurm = getExampleById("slurm", "send-email").script;
+
+    assert.match(pbs, /#PBS -M user@example\.com/);
+    assert.match(pbs, /#PBS -m abe/);
+    assert.match(pbs, /\$\{PBS_JOBID\}/);
+    assert.match(pbs, /sleep 30/);
+
+    assert.match(slurm, /#SBATCH --mail-user=user@example\.com/);
+    assert.match(slurm, /#SBATCH --mail-type=BEGIN,END,FAIL/);
+    assert.match(slurm, /mail-test-%j\.out/);
+    assert.match(slurm, /\$\{SLURM_JOB_ID\}/);
+    assert.match(slurm, /sleep 30/);
+});
