@@ -183,3 +183,44 @@ textarea::placeholder { color: #64748b; }
     textarea { min-height: 400px; }
     .direction-card label { min-width: 100%; }
 }
+
+.example-picker {
+    display: inline-flex;
+}
+
+.example-picker select {
+    min-width: 210px;
+    min-height: 44px;
+    padding: 0.7rem 2.4rem 0.7rem 1rem;
+    cursor: pointer;
+    color: white;
+    background-color: var(--accent-strong);
+    border: 0;
+    border-radius: 999px;
+    font-weight: 700;
+    box-shadow: 0 10px 20px rgba(2, 132, 199, 0.25);
+}
+
+.example-picker optgroup {
+    color: var(--text);
+    background: var(--surface);
+    font-weight: 700;
+}
+
+.example-picker option {
+    color: var(--text);
+    background: var(--surface-3);
+    font-weight: 400;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

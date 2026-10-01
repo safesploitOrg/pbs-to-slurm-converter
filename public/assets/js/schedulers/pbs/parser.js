@@ -98,11 +98,11 @@ function parseDirective(directive, job, diagnostics, line) {
             parseMail(value, job);
             return;
         case "-J":
-            job.array = parseArrayExpression(value);
+            parseArray(value, job, diagnostics, line, `-J ${value}`);
             return;
         case "-t":
             job.source.dialect = PBS_DIALECT.TORQUE;
-            job.array = parseArrayExpression(value);
+            parseArray(value, job, diagnostics, line, `-t ${value}`);
             return;
         case "-V":
             job.environment.exportAll = true;
@@ -124,6 +124,20 @@ function parseDirective(directive, job, diagnostics, line) {
         default:
             preserveUnsupported(job, diagnostics, directive, line);
     }
+}
+
+function parseArray(value, job, diagnostics, line, directive) {
+    const array = parseArrayExpression(value);
+    const concurrencyValid = !String(value).includes("%") || /%\d+$/.test(String(value));
+    const rangesValid = array?.ranges?.length > 0
+        && array.ranges.every((range) => range.valid && range.step > 0 && range.end >= range.start);
+
+    if (!array || !concurrencyValid || !rangesValid) {
+        preserveUnsupported(job, diagnostics, directive, line);
+        return;
+    }
+
+    job.array = array;
 }
 
 function parseMail(value, job) {
@@ -166,6 +180,7 @@ function parseResources(value, job, diagnostics, line) {
             const seconds = parsePbsDuration(resource.slice("walltime=".length));
             if (seconds === null) {
                 warning(diagnostics, "PBS_WALLTIME_INVALID", `Could not parse PBS walltime: ${resource}`, { line, scheduler: "pbs" });
+                job.resources.custom.push({ scheduler: "pbs", raw: resource });
             } else {
                 job.resources.walltimeSeconds = seconds;
             }
@@ -197,6 +212,7 @@ function parseResources(value, job, diagnostics, line) {
             const parsed = parseMemory(rawValue);
             if (!parsed) {
                 warning(diagnostics, "PBS_MEMORY_INVALID", `Could not parse PBS memory resource: ${resource}`, { line, scheduler: "pbs" });
+                job.resources.custom.push({ scheduler: "pbs", raw: resource });
                 continue;
             }
             job.resources.memory.push({

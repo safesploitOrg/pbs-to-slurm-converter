@@ -14,6 +14,38 @@ The project follows Semantic Versioning.
 
 ### Security
 
+## [1.2.0] - 2026-10-01
+
+### Added
+
+- Categorised **Load Example** dropdown with a Recommended group shown first.
+- Recommended examples: Basic Job, Send Email, MPI Job, and GPU Job.
+- Additional example categories for General, Parallel Workloads, Resources, Scheduling, and Compatibility.
+- Scheduler-aware PBS and Slurm example scripts stored in a shared example registry.
+- Example catalogue regression tests: every example is converted through production code.
+- Dedicated PBS and Slurm renderer unit tests.
+- Expanded PBS/Slurm resource tests for CPU topology, memory, GPUs, arrays, mail, dependencies, environment variables, filename patterns, start times, and scheduler dialects.
+- Semantic round-trip tests for portable catalogue examples.
+- Malformed-input tests enforcing the rule that invalid scheduler syntax must not crash or disappear silently.
+- UI menu tests plus an optional Playwright browser smoke test (`npm run test:ui`) when Playwright/browser execution is available.
+- Coverage command: `npm run test:coverage`.
+
+### Changed
+
+- Example definitions are now data-driven under `public/assets/js/examples/` rather than embedded in UI code.
+- Recommended examples are omitted from their normal categories to avoid duplicate dropdown entries.
+- Changing or swapping source schedulers rebuilds the example menu for the selected source scheduler.
+- JavaScript syntax checking now covers all production and JavaScript test files.
+- Expanded the automated Node test suite from 29 tests in v1.1.0 to 85 tests.
+
+### Fixed
+
+- Invalid Slurm node/task/CPU, GPU, memory, array, and time values are preserved for review instead of silently falling out of the model.
+- Invalid PBS arrays, walltime, memory, and malformed `select` values are preserved/flagged rather than producing misleading active target directives.
+- Typed Slurm GPU requests now generate explicit PBS review diagnostics when the GPU type cannot be expressed portably.
+- Slurm GPUs-per-socket requests are preserved for manual PBS resource modelling.
+- PBS select properties and legacy TORQUE node properties now generate explicit Slurm review diagnostics instead of being silently dropped.
+
 ## [1.1.0] - 2026-10-01
 
 ### Added

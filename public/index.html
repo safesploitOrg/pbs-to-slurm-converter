@@ -46,7 +46,12 @@
         </section>
 
         <section class="toolbar" aria-label="Converter actions">
-            <button type="button" id="loadExampleBtn">Load Example</button>
+            <label class="example-picker" for="exampleSelect">
+                <span class="visually-hidden">Load example</span>
+                <select id="exampleSelect" aria-label="Load example">
+                    <option value="">Load Example…</option>
+                </select>
+            </label>
             <button type="button" id="copyOutputBtn">Copy Output</button>
             <button type="button" id="downloadOutputBtn">Download Slurm Script</button>
             <button type="button" id="clearBtn" class="secondary">Clear</button>
@@ -61,7 +66,7 @@
                     </div>
                     <span id="inputLineCount" class="badge">0 lines</span>
                 </div>
-                <textarea id="sourceInput" spellcheck="false" aria-label="Source scheduler script" placeholder="Paste a batch script here, or click Load Example..."></textarea>
+                <textarea id="sourceInput" spellcheck="false" aria-label="Source scheduler script" placeholder="Paste a batch script here, or choose Load Example…"></textarea>
             </div>
 
             <div class="panel">

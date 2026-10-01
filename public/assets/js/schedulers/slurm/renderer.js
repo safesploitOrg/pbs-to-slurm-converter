@@ -181,6 +181,12 @@ function deriveFromPbsChunks(job, comments, diagnostics) {
         return null;
     }
 
+    if (job.resources.chunks.some((chunk) => chunk.valid === false)) {
+        comments.push(`# REVIEW: invalid PBS select request was not converted into active Slurm resource directives: ${job.resources.chunks.map((chunk) => chunk.raw).join("+")}`);
+        warning(diagnostics, "SLURM_INVALID_SELECT_REVIEW", "Invalid PBS select syntax was preserved for manual review; active Slurm resource directives were not guessed.");
+        return {};
+    }
+
     if (!chunksAreHomogeneous(job.resources.chunks)) {
         comments.push(`# REVIEW: heterogeneous PBS select request was not converted into active Slurm resource directives: ${job.resources.chunks.map((chunk) => chunk.raw).join("+")}`);
         warning(diagnostics, "SLURM_HETEROGENEOUS_REVIEW", "Heterogeneous PBS select chunks require Slurm heterogeneous-job or site-specific handling; active resource directives were not guessed.");
@@ -189,6 +195,11 @@ function deriveFromPbsChunks(job, comments, diagnostics) {
 
     const first = job.resources.chunks[0];
     const chunkCount = job.resources.chunks.reduce((total, chunk) => total + chunk.count, 0);
+
+    if (Object.keys(first.properties ?? {}).length > 0) {
+        comments.push(`# REVIEW: PBS select properties require site-specific Slurm constraints/features: ${Object.entries(first.properties).map(([key, value]) => value === true ? key : `${key}=${value}`).join(":")}`);
+        warning(diagnostics, "SLURM_PBS_PROPERTIES_REVIEW", "PBS select properties have no portable Slurm mapping and require target-site constraint/feature configuration.");
+    }
     const oneChunkPerNode = ["scatter", "vscatter"].includes(job.resources.placement.arrangement)
         || ["excl", "exclhost"].includes(job.resources.placement.sharing);
 
@@ -237,6 +248,11 @@ function deriveFromLegacyNodes(job, comments, diagnostics) {
         comments.push(`# REVIEW: heterogeneous legacy nodes request was not fully converted: ${job.resources.legacyNodes.raw}`);
         warning(diagnostics, "SLURM_LEGACY_HETEROGENEOUS", "Heterogeneous legacy nodes/ppn syntax requires manual Slurm resource modelling.");
         return {};
+    }
+
+    if (first.properties.length > 0) {
+        comments.push(`# REVIEW: legacy PBS/TORQUE node properties require site-specific Slurm constraints/features: ${first.properties.join(":")}`);
+        warning(diagnostics, "SLURM_LEGACY_PROPERTIES_REVIEW", "Legacy PBS/TORQUE node properties have no portable Slurm mapping and require target-site constraint/feature configuration.");
     }
 
     const nodes = segments.reduce((total, segment) => total + segment.count, 0);

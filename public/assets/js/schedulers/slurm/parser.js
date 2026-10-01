@@ -96,18 +96,18 @@ function parseDirective(directive, job, diagnostics, line) {
             return;
         case "--nodes":
         case "-N":
-            job.resources.nodes = toInteger(value);
+            assignIntegerResource(job, diagnostics, directive, line, "nodes", value);
             return;
         case "--ntasks":
         case "-n":
-            job.resources.tasks = toInteger(value);
+            assignIntegerResource(job, diagnostics, directive, line, "tasks", value);
             return;
         case "--ntasks-per-node":
-            job.resources.tasksPerNode = toInteger(value);
+            assignIntegerResource(job, diagnostics, directive, line, "tasksPerNode", value);
             return;
         case "--cpus-per-task":
         case "-c":
-            job.resources.cpusPerTask = toInteger(value);
+            assignIntegerResource(job, diagnostics, directive, line, "cpusPerTask", value);
             return;
         case "--time":
         case "-t":
@@ -123,16 +123,16 @@ function parseDirective(directive, job, diagnostics, line) {
             addMemory(job, value, "physical", "gpu", "mem-per-gpu", diagnostics, line);
             return;
         case "--gpus":
-            job.resources.gpus.push(parseGpuOption(value, "job"));
+            addGpuOption(job, diagnostics, directive, line, value, "job");
             return;
         case "--gpus-per-node":
-            job.resources.gpus.push(parseGpuOption(value, "node"));
+            addGpuOption(job, diagnostics, directive, line, value, "node");
             return;
         case "--gpus-per-task":
-            job.resources.gpus.push(parseGpuOption(value, "task"));
+            addGpuOption(job, diagnostics, directive, line, value, "task");
             return;
         case "--gpus-per-socket":
-            job.resources.gpus.push(parseGpuOption(value, "socket"));
+            addGpuOption(job, diagnostics, directive, line, value, "socket");
             return;
         case "--gres":
             parseGres(value, job, diagnostics, line);
@@ -153,7 +153,7 @@ function parseDirective(directive, job, diagnostics, line) {
             return;
         case "--array":
         case "-a":
-            job.array = parseArrayExpression(value);
+            parseArray(value, job, diagnostics, line, directive);
             return;
         case "--export":
             parseExport(value, job);
@@ -210,10 +210,43 @@ function parseOption(directive) {
     return { option: clean, value: "" };
 }
 
+function assignIntegerResource(job, diagnostics, directive, line, field, value) {
+    const parsed = toInteger(value);
+    if (parsed === null) {
+        preserveUnsupported(job, diagnostics, directive, line, `Expected a non-negative integer for ${field}.`);
+        return;
+    }
+    job.resources[field] = parsed;
+}
+
+function addGpuOption(job, diagnostics, directive, line, value, scope) {
+    const parsed = parseGpuOption(value, scope);
+    if (parsed.count === null) {
+        preserveUnsupported(job, diagnostics, directive, line, "GPU count could not be parsed safely.");
+        return;
+    }
+    job.resources.gpus.push(parsed);
+}
+
+function parseArray(value, job, diagnostics, line, directive) {
+    const array = parseArrayExpression(value);
+    const concurrencyValid = !String(value).includes("%") || /%\d+$/.test(String(value));
+    const rangesValid = array?.ranges?.length > 0
+        && array.ranges.every((range) => range.valid && range.step > 0 && range.end >= range.start);
+
+    if (!array || !concurrencyValid || !rangesValid) {
+        preserveUnsupported(job, diagnostics, directive, line, "Invalid or unsupported Slurm array expression.");
+        return;
+    }
+
+    job.array = array;
+}
+
 function parseTime(value, job, diagnostics, line) {
     const seconds = parseSlurmDuration(value);
     if (seconds === null) {
         warning(diagnostics, "SLURM_TIME_INVALID", `Could not parse Slurm time value: ${value}`, { line, scheduler: "slurm" });
+        preserveUnsupported(job, diagnostics, `--time=${value}`, line, "Invalid or unsupported Slurm time syntax.");
         return;
     }
     job.resources.walltimeSeconds = seconds;
@@ -223,20 +256,26 @@ function addMemory(job, value, kind, scope, sourceKind, diagnostics, line) {
     const parsed = parseMemory(value, "m");
     if (!parsed) {
         warning(diagnostics, "SLURM_MEMORY_INVALID", `Could not parse Slurm memory value: ${value}`, { line, scheduler: "slurm" });
+        preserveUnsupported(job, diagnostics, `--${sourceKind}=${value}`, line, "Invalid or unsupported Slurm memory syntax.");
         return;
     }
     job.resources.memory.push({ kind, scope, bytes: parsed.bytes, sourceKind });
 }
 
 function parseGres(value, job, diagnostics, line) {
+    const entries = splitCsv(value);
     const gpus = parseGpuGres(value);
     if (gpus.length > 0) {
         job.resources.gpus.push(...gpus);
     }
 
-    const nonGpu = splitCsv(value).filter((entry) => !entry.startsWith("gpu:"));
+    const gpuEntries = entries.filter((entry) => entry.startsWith("gpu:"));
+    const nonGpu = entries.filter((entry) => !entry.startsWith("gpu:"));
     if (nonGpu.length > 0) {
         preserveUnsupported(job, diagnostics, `--gres=${value}`, line, "Non-GPU Slurm GRES values have no portable PBS mapping.");
+    }
+    if (gpuEntries.length > gpus.length) {
+        preserveUnsupported(job, diagnostics, `--gres=${value}`, line, "One or more GPU GRES entries could not be parsed safely.");
     }
 }
 

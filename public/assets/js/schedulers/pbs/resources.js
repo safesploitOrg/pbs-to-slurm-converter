@@ -5,6 +5,27 @@ export function parseSelect(value, diagnostics, line) {
     const expression = String(value).replace(/^select=/, "").trim();
     const chunks = [];
 
+    if (!expression) {
+        warning(
+            diagnostics,
+            "PBS_SELECT_INVALID",
+            "PBS select resource is empty and cannot be converted safely.",
+            { line, scheduler: "pbs" }
+        );
+        return [{
+            count: 1,
+            ncpus: null,
+            mpiprocs: null,
+            ompthreads: null,
+            memoryBytes: null,
+            virtualMemoryBytes: null,
+            gpus: null,
+            properties: {},
+            raw: "",
+            valid: false
+        }];
+    }
+
     for (const rawChunk of expression.split("+")) {
         const parts = rawChunk.split(":").filter(Boolean);
         let count = 1;
@@ -24,7 +45,8 @@ export function parseSelect(value, diagnostics, line) {
             virtualMemoryBytes: null,
             gpus: null,
             properties: {},
-            raw: rawChunk
+            raw: rawChunk,
+            valid: true
         };
 
         for (const token of parts.slice(index)) {
@@ -38,24 +60,36 @@ export function parseSelect(value, diagnostics, line) {
             switch (key) {
                 case "ncpus":
                     chunk.ncpus = toInteger(tokenValue);
+                    if (chunk.ncpus === null) markInvalid(chunk, diagnostics, line, token);
                     break;
                 case "mpiprocs":
                     chunk.mpiprocs = toInteger(tokenValue);
+                    if (chunk.mpiprocs === null) markInvalid(chunk, diagnostics, line, token);
                     break;
                 case "ompthreads":
                     chunk.ompthreads = toInteger(tokenValue);
+                    if (chunk.ompthreads === null) markInvalid(chunk, diagnostics, line, token);
                     break;
-                case "mem":
-                    chunk.memoryBytes = parseMemory(tokenValue)?.bytes ?? null;
+                case "mem": {
+                    const parsed = parseMemory(tokenValue);
+                    chunk.memoryBytes = parsed?.bytes ?? null;
+                    if (!parsed) markInvalid(chunk, diagnostics, line, token);
                     break;
-                case "vmem":
-                    chunk.virtualMemoryBytes = parseMemory(tokenValue)?.bytes ?? null;
+                }
+                case "vmem": {
+                    const parsed = parseMemory(tokenValue);
+                    chunk.virtualMemoryBytes = parsed?.bytes ?? null;
+                    if (!parsed) markInvalid(chunk, diagnostics, line, token);
                     break;
+                }
                 case "ngpus":
                 case "gpus":
-                case "gpu":
-                    chunk.gpus = { count: toInteger(tokenValue), type: null };
+                case "gpu": {
+                    const count = toInteger(tokenValue);
+                    chunk.gpus = { count, type: null };
+                    if (count === null) markInvalid(chunk, diagnostics, line, token);
                     break;
+                }
                 default:
                     chunk.properties[key] = tokenValue;
                     break;
@@ -140,6 +174,16 @@ export function parsePlace(value) {
     }
 
     return placement;
+}
+
+function markInvalid(chunk, diagnostics, line, token) {
+    chunk.valid = false;
+    warning(
+        diagnostics,
+        "PBS_SELECT_VALUE_INVALID",
+        `PBS select token '${token}' could not be parsed safely.`,
+        { line, scheduler: "pbs" }
+    );
 }
 
 function toInteger(value) {
