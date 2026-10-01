@@ -2,7 +2,8 @@ import { APP_VERSION } from "../core/version.js";
 import { convert } from "../core/converter.js";
 import { downloadTextFile, outputFilename } from "./download.js";
 import { countLines, renderList, schedulerLabel } from "./editor.js";
-import { EXAMPLES } from "./examples.js";
+import { getExampleById } from "../examples/index.js";
+import { populateExampleSelect } from "./example-menu.js";
 
 const SOURCE_TO_TARGET = Object.freeze({
     pbs: "slurm",
@@ -18,7 +19,7 @@ function initialiseConverter() {
     const targetLabel = document.getElementById("targetLabel");
     const sourceInput = document.getElementById("sourceInput");
     const targetOutput = document.getElementById("targetOutput");
-    const loadExampleBtn = document.getElementById("loadExampleBtn");
+    const exampleSelect = document.getElementById("exampleSelect");
     const swapBtn = document.getElementById("swapBtn");
     const copyOutputBtn = document.getElementById("copyOutputBtn");
     const downloadOutputBtn = document.getElementById("downloadOutputBtn");
@@ -40,6 +41,10 @@ function initialiseConverter() {
         targetLabel.textContent = `${schedulerLabel(targetScheduler.value)} Output`;
         targetDialectField.hidden = targetScheduler.value !== "pbs";
         downloadOutputBtn.textContent = `Download ${targetScheduler.value === "pbs" ? "PBS" : "Slurm"} Script`;
+    }
+
+    function refreshExamples() {
+        populateExampleSelect(exampleSelect, sourceScheduler.value);
     }
 
     function refreshConversion() {
@@ -77,6 +82,7 @@ function initialiseConverter() {
     sourceScheduler.addEventListener("change", () => {
         targetScheduler.value = SOURCE_TO_TARGET[sourceScheduler.value];
         sourceInput.value = "";
+        refreshExamples();
         refreshConversion();
         sourceInput.focus();
     });
@@ -85,6 +91,7 @@ function initialiseConverter() {
         if (targetScheduler.value === sourceScheduler.value) {
             sourceScheduler.value = SOURCE_TO_TARGET[targetScheduler.value];
             sourceInput.value = "";
+            refreshExamples();
         }
         refreshConversion();
     });
@@ -100,12 +107,23 @@ function initialiseConverter() {
             sourceInput.value = targetOutput.value;
         }
 
+        refreshExamples();
         refreshConversion();
         sourceInput.focus();
     });
 
-    loadExampleBtn.addEventListener("click", () => {
-        sourceInput.value = EXAMPLES[sourceScheduler.value];
+    exampleSelect.addEventListener("change", () => {
+        if (!exampleSelect.value) {
+            return;
+        }
+
+        const example = getExampleById(sourceScheduler.value, exampleSelect.value);
+        if (!example) {
+            return;
+        }
+
+        sourceInput.value = example.script;
+        exampleSelect.value = "";
         refreshConversion();
         sourceInput.focus();
     });
@@ -132,6 +150,7 @@ function initialiseConverter() {
 
     document.getElementById("currentYear").textContent = String(new Date().getFullYear());
     document.getElementById("appVersion").textContent = `v${APP_VERSION}`;
+    refreshExamples();
     refreshConversion();
 }
 

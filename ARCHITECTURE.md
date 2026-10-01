@@ -4,7 +4,7 @@
 
 `pbs-to-slurm-converter` is a static, dependency-free browser utility for converting HPC batch scripts between PBS-family schedulers and Slurm.
 
-Version 1.1 introduced bidirectional conversion and deliberately avoids two independent conversion engines. The architecture is based on a scheduler-neutral intermediate model.
+Version 1.1 introduced bidirectional conversion and deliberately avoided two independent conversion engines. Version 1.2 adds a scheduler-aware example catalogue, stronger parser validation, and a substantially expanded regression suite. The architecture remains based on a scheduler-neutral intermediate model.
 
 ## Design Principles
 
@@ -49,6 +49,7 @@ pbs-to-slurm-converter/
 |-- README.md
 |-- ARCHITECTURE.md
 |-- SUPPORT_MATRIX.md
+|-- TESTING.md
 |-- CHANGELOG.md
 |-- package.json
 |-- .github/
@@ -72,6 +73,10 @@ pbs-to-slurm-converter/
 |           |   |-- script-analysis.js
 |           |   |-- utils.js
 |           |   `-- version.js
+|           |-- examples/
+|           |   |-- index.js
+|           |   |-- pbs.js
+|           |   `-- slurm.js
 |           |-- schedulers/
 |           |   |-- pbs/
 |           |   |   |-- constants.js
@@ -90,18 +95,41 @@ pbs-to-slurm-converter/
 |           `-- ui/
 |               |-- download.js
 |               |-- editor.js
-|               |-- examples.js
+|               |-- example-menu.js
 |               `-- main.js
 `-- tests/
     |-- core/
+    |-- examples/
     |-- schedulers/
     |   |-- pbs/
     |   `-- slurm/
     |-- integration/
+    |-- ui/
     `-- fixtures/
         |-- pbs/
         `-- slurm/
 ```
+
+## Example Catalogue
+
+Examples are application data rather than UI logic.
+
+```text
+examples/index.js
+    |
+    +-- metadata/category/recommended flags
+    +-- PBS scripts from examples/pbs.js
+    `-- Slurm scripts from examples/slurm.js
+             |
+             +-- browser dropdown
+             `-- automated regression tests
+```
+
+`examples/index.js` is the single source of truth for catalogue metadata. The UI asks for examples valid for the selected source scheduler and builds grouped menu data through `ui/example-menu.js`.
+
+The first menu group is **Recommended**. Recommended examples are intentionally omitted from their normal category groups so each example appears exactly once.
+
+Scheduler-specific examples are allowed. For example, the Legacy TORQUE example exists only for PBS-family source input and is automatically filtered from the Slurm source menu.
 
 ## JobModel
 
@@ -237,6 +265,23 @@ The former is a file path and the latter is a node-list expression. The converte
 
 `core/script-analysis.js` scans preserved executable lines for scheduler-specific launch/control commands. It does not rewrite application commands automatically. For example, `srun` is preserved when targeting PBS but a review warning is emitted, while `mpiexec`/`mpirun` are preserved when targeting Slurm with a reminder to verify the MPI integration expected by the target cluster.
 
+## Parser Validation and Preservation
+
+Parsers distinguish between a valid recognised value and a recognised option containing invalid syntax. Invalid syntax must not quietly collapse to `null` and disappear.
+
+Examples include malformed:
+
+- node/task/CPU counts,
+- memory values,
+- GPU counts/GRES,
+- array expressions,
+- walltime/start time,
+- PBS `select` resource values.
+
+When a value cannot be interpreted safely, the parser records diagnostics and preserves the source intent as an unsupported/custom review item. Renderers then emit `REVIEW` comments rather than manufacturing an active target directive.
+
+Typed GPU information, GPUs-per-socket, PBS chunk properties, and legacy node properties are also explicitly surfaced for review when the target scheduler has no portable representation.
+
 ## Unsupported and Ambiguous Syntax
 
 Unsupported source directives are retained in `job.unsupported` and emitted in target output as comments such as:
@@ -251,58 +296,43 @@ This is intentional. The converter must not make an invalid script look authorit
 
 Tests use Node.js built-in `node:test` and import the production ES modules directly.
 
-### Unit tests
+The v1.2 suite contains 85 Node tests and is organised by responsibility:
 
-Cover scheduler-neutral utilities such as durations, memory, arrays, and start times.
+### Core tests
+
+Cover conversion orchestration, duration/memory/array utilities, runtime environment-variable translation, scheduler filename patterns, and script-body analysis.
 
 ### Parser tests
 
-Verify PBS and Slurm syntax becomes the expected `JobModel` semantics.
+Verify PBS and Slurm syntax becomes the expected `JobModel`, including malformed input and scheduler-specific review paths.
+
+### Renderer tests
+
+Construct neutral models directly and verify `JobModel -> PBS` and `JobModel -> Slurm` independently from parser behaviour.
+
+### Resource tests
+
+Cover PBS `select`, placement, legacy nodes/PPN, Slurm GPU/GRES parsing, CPU topology, memory scope, and GPU scope/type handling.
 
 ### Integration tests
 
-Verify complete PBS -> Slurm and Slurm -> PBS output.
+Exercise full PBS -> Slurm and Slurm -> PBS conversion, dependency/mail/array matrices, malformed-input preservation, and semantic round trips.
 
-### Round-trip tests
+### Catalogue tests
 
-Verify portable semantics survive:
+Every UI example is converted through the real production converter. Portable examples are also used for semantic round-trip regression tests.
 
-```text
-PBS -> Slurm -> PBS
+### UI tests
+
+Pure menu-plan tests verify grouping, Recommended-first ordering, scheduler filtering, and no duplicated Recommended entries. An optional Python Playwright smoke test (`npm run test:ui`) exercises the real rendered dropdown and scheduler switching when browser automation is available.
+
+### Commands
+
+```bash
+npm run check
+npm test
+npm run test:coverage
+npm run test:ui
 ```
 
-Round-trip tests compare parsed semantics rather than exact text formatting.
-
-## CI/CD
-
-On pushes to `main`:
-
-1. JavaScript syntax checks run.
-2. Full tests run.
-3. GitHub Pages deployment occurs only if both succeed.
-
-## Adding a New Conversion Capability
-
-1. Identify the scheduler-neutral semantic concept.
-2. Add a `JobModel` field only if an existing field cannot represent it.
-3. Parse the source scheduler option into that field.
-4. Render the target scheduler option from that field.
-5. If semantics are approximate, emit a diagnostic.
-6. If no portable representation exists, preserve it as a review comment.
-7. Add parser and integration tests in both relevant directions.
-8. Update `SUPPORT_MATRIX.md` and `CHANGELOG.md`.
-
-Do not add direct PBS-to-Slurm or Slurm-to-PBS special cases to the UI.
-
-## Future Scheduler Support
-
-The architecture can be extended with another scheduler by adding:
-
-```text
-schedulers/<scheduler>/parser.js
-schedulers/<scheduler>/renderer.js
-```
-
-and registering them with the core converter.
-
-This avoids the N x (N - 1) pairwise-converter problem.
+The default CI gate remains dependency-free: syntax checks plus `npm test` must pass before GitHub Pages deployment.

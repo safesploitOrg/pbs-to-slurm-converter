@@ -1,6 +1,6 @@
 # Conversion Support Matrix
 
-This document records the intended support level for scheduler semantics in v1.1.0.
+This document records the intended support level for scheduler semantics in v1.2.0.
 
 ## Support Levels
 
@@ -53,7 +53,8 @@ This document records the intended support level for scheduler semantics in v1.1
 | Total GPUs | site/resource dependent | `--gpus` | Best effort to PBS `ngpus` |
 | GPUs per node | chunk `ngpus=` | `--gpus-per-node` | Strong when one PBS chunk maps to one node |
 | GPUs per task | derived from chunk/process topology | `--gpus-per-task` | Best effort |
-| GPU type | site-specific resource/property | typed GPU/GRES | Preserve or best effort depending on syntax |
+| GPU type | site-specific resource/property | typed GPU/GRES | Count may convert best-effort; type is explicitly flagged for review when PBS cannot express it portably |
+| GPUs per socket | no portable generic equivalent | `--gpus-per-socket` | Preserve/review |
 | Non-GPU GRES | site-specific | `--gres` | Preserve/review |
 
 ## I/O and Working Directory
@@ -153,6 +154,12 @@ The parser recognises but does not guess portable PBS equivalents for options in
 - non-GPU GRES
 
 They are emitted as `REVIEW` comments in PBS output.
+
+## Invalid / Malformed Input
+
+Recognised options with malformed values are not silently discarded. Invalid node/task/CPU counts, memory values, GPU/GRES expressions, arrays, walltime values, and PBS `select` values are retained through structured diagnostics and/or `REVIEW` comments. The converter avoids emitting active target directives when doing so would require guessing the intended value.
+
+PBS select properties and legacy TORQUE node properties are parsed but treated as site-specific when targeting Slurm. Typed Slurm GPUs retain the portable count where possible while the type requirement is surfaced explicitly for target-site PBS configuration.
 
 ## References
 

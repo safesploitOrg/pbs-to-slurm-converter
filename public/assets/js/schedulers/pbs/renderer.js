@@ -182,6 +182,8 @@ function renderSelectResources(job, directives, comments, diagnostics) {
     if (job.resources.exclusive) {
         directives.push("#PBS -l place=exclhost");
     }
+
+    renderGpuReviews(job, comments, diagnostics);
 }
 
 function renderTorqueResources(job, directives, comments, diagnostics) {
@@ -212,6 +214,23 @@ function renderTorqueResources(job, directives, comments, diagnostics) {
     if (job.resources.exclusive) {
         comments.push("# REVIEW: exclusive-node behaviour is site-specific in TORQUE and was not emitted as an active directive.");
         warning(diagnostics, "TORQUE_EXCLUSIVE_REVIEW", "Exclusive-node behaviour is site-specific in TORQUE.");
+    }
+
+    renderGpuReviews(job, comments, diagnostics);
+}
+
+function renderGpuReviews(job, comments, diagnostics) {
+    const typed = job.resources.gpus.filter((gpu) => gpu.type);
+    if (typed.length > 0) {
+        const descriptions = [...new Set(typed.map((gpu) => `${gpu.type}:${gpu.count}`))];
+        comments.push(`# REVIEW: Slurm GPU type information is site-specific in PBS and was not encoded in active ngpus syntax: ${descriptions.join(", ")}`);
+        warning(diagnostics, "PBS_GPU_TYPE_REVIEW", "Slurm GPU type information has no portable PBS ngpus representation; verify target-site GPU resource/property syntax.");
+    }
+
+    const socketScoped = job.resources.gpus.filter((gpu) => gpu.scope === "socket");
+    if (socketScoped.length > 0) {
+        comments.push(`# REVIEW: Slurm GPUs-per-socket request has no portable PBS equivalent: ${socketScoped.map((gpu) => gpu.raw ?? gpu.count).join(", ")}`);
+        warning(diagnostics, "PBS_GPU_SOCKET_UNSUPPORTED", "Slurm GPUs per socket has no portable PBS equivalent and requires manual resource modelling.");
     }
 }
 

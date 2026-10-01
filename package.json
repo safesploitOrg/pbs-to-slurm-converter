@@ -1,11 +1,13 @@
 {
   "name": "pbs-to-slurm-converter",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Dependency-free browser utility for bidirectional PBS/OpenPBS/PBS Pro/TORQUE and Slurm batch-script conversion",
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node --check public/assets/js/core/converter.js && node --check public/assets/js/schedulers/pbs/parser.js && node --check public/assets/js/schedulers/pbs/renderer.js && node --check public/assets/js/schedulers/slurm/parser.js && node --check public/assets/js/schedulers/slurm/renderer.js && node --check public/assets/js/ui/main.js"
+    "test:coverage": "node --test --experimental-test-coverage",
+    "test:ui": "python3 tests/ui/browser_smoke.py",
+    "check": "find public/assets/js tests -name '*.js' -print0 | xargs -0 -n1 node --check"
   },
   "engines": {
     "node": ">=20"
